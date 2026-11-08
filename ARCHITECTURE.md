@@ -23,6 +23,19 @@ Veri akışı tek yönlüdür: `Repository → ViewModel (StateFlow) → Compose
 └───────────────────┘
 ```
 
+## Firebase kullanım kapsamı ve durum
+
+| Servis | Kapsam | Durum |
+|---|---|---|
+| Auth | Phone OTP ile giriş | Henüz yazılmadı; oturum kontrolü yok, `bookAppointment` oturum yoksa `NotSignedInException` fırlatır |
+| Firestore | Tüm veri erişimi `KuaforRepository` üzerinden; slot transaction'ı; `firestore.rules` | Kod yazıldı, derlenmedi; gerçek Firebase projesine bağlı değil |
+| Storage | `FirebaseModule` içinde sağlayıcı olarak tanımlı | Hiçbir yerde kullanılmıyor |
+| Cloud Messaging | Push bildirim / randevu hatırlatma | Bağımlılık eklendi; `FirebaseMessagingService` veya Cloud Function yok |
+
+`google-services.json` henüz `app/` klasörüne eklenmedi (`TASK.md`'de
+`[~]`). Auth ve Firestore bu dosya olmadan çalışmaz; kurulum adımları için
+bkz. `README.md` (Kurulum bölümü).
+
 ## Kaynak proje kıyaslaması ve melez mimari kararı
 
 Proje, GitHub'da incelenen açık kaynak kuaför/berber uygulamalarının en

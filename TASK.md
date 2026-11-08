@@ -2,21 +2,45 @@
 
 Görev durumları: `[ ]` yapılmadı · `[~]` kısmen yapıldı · `[x]` tamamlandı
 
+## Mevcut kod durumu — kod yazıldı, derlenmedi
+
+Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase projesine karşı test edilmedi.
+
+- [~] **Veri katmanı (okuma)** — `KuaforRepository`: `getShops`, `getShop`,
+      `getBarbers`, `getServices`, `getAvailableSlots`, `getMyAppointments`.
+      Kod yazıldı, derlenmedi; bunları çağıran ekran henüz yok.
+- [~] **Çakışmasız randevu** — `KuaforRepository.bookAppointment()` transaction'ı
+      ve `firestore.rules` içindeki slot/appointment kuralları. Kod yazıldı,
+      derlenmedi; eşzamanlı rezervasyon testi yapılmadı.
+- [~] **BookingViewModel** — `load()` ve `bookSlot()`. Kod yazıldı, derlenmedi;
+      bağlı `BookingScreen` henüz yok.
+- [~] **Veri modelleri** — `Shop`, `Barber`, `Service`, `TimeSlot`,
+      `Appointment`, `Review`. Kod yazıldı, derlenmedi. (`User` modeli yok.)
+- [~] **Proje iskeleti** — Gradle (`build.gradle.kts`, `gradle/libs.versions.toml`),
+      `AndroidManifest.xml`, `MainActivity`, `KuaforApplication`, `FirebaseModule`,
+      tema dosyaları, `Screen` ve placeholder'lı `NavGraph`. Kod yazıldı,
+      derlenmedi; `gradle/wrapper/` ve `values/themes.xml` repoda yok.
+
 ## Kritik — uygulama çalışmadan önce şart
 
 - [~] **Firebase projesi bağlama** — Firebase Console'da proje oluşturuldu
       mu belirsiz; `google-services.json` henüz `app/` klasörüne
-      eklenmedi. Bu olmadan Auth/Firestore hiç çalışmaz.
-- [ ] **Login / Phone OTP ekranı** — `MainActivity` şu an sabit
-      `demo-user-uid` kullanıyor. Gerçek `FirebaseAuth` Phone OTP akışı
-      (kaynak: zeryab-tahir/Barber-App) yazılmalı, giriş yapmamış
-      kullanıcı `NavGraph`'a girmeden login ekranına yönlendirilmeli.
+      eklenmedi (doğrulandı: dosya repoda yok). Bu olmadan Auth/Firestore
+      hiç çalışmaz.
+- [ ] **Login / Phone OTP ekranı** — `MainActivity` içinde oturum kontrolü
+      yok (TODO). `NavGraph`'taki Splash de `FirebaseAuth` kontrolü yapmıyor.
+      Gerçek `FirebaseAuth` Phone OTP akışı (kaynak: zeryab-tahir/Barber-App)
+      yazılmalı, giriş yapmamış kullanıcı `NavGraph`'a girmeden login
+      ekranına yönlendirilmeli. (`bookAppointment` oturum yoksa
+      `NotSignedInException` fırlatıyor.)
 - [ ] **Firestore'a başlangıç verisi** — En az 1 `shop`, birkaç
       `service`, `barber` ve `slot` dokümanı elle veya bir seed script
-      ile eklenmeli, aksi halde tüm ekranlar boş görünür.
-- [ ] **Gerçek konum izni akışı** — `MainActivity`'deki sabit İzmir
-      koordinatı yerine `ACCESS_FINE_LOCATION` izni istenip
-      `FusedLocationProviderClient` ile gerçek konum alınmalı.
+      ile eklenmeli, aksi halde tüm ekranlar boş görünür. (Repoda seed
+      script yok.)
+- [ ] **Gerçek konum izni akışı** — `ACCESS_FINE_LOCATION` ve
+      `ACCESS_COARSE_LOCATION` izinleri `AndroidManifest.xml`'de tanımlı,
+      ama kodda konum alan bir yer yok. İzin isteği ve
+      `FusedLocationProviderClient` ile gerçek konum alma yazılmalı.
 
 ## Yüksek öncelik
 
@@ -27,13 +51,15 @@ Görev durumları: `[ ]` yapılmadı · `[~]` kısmen yapıldı · `[x]` tamamla
 - [ ] **`averageRating` güncelleme Cloud Function'ı** — `addReview()`
       çağrıldığında dükkanın ortalama puanını client değil, bir Cloud
       Function güncellemeli (race condition riski, bkz.
-      `ARCHITECTURE.md`).
+      `ARCHITECTURE.md`). (`addReview` ve `getReviews` henüz yazılmadı;
+      `reviews` için yalnızca create kuralı var.)
 - [ ] **Push bildirim / randevu hatırlatma** — Firebase Cloud
       Messaging bağımlılığı eklendi ama hiçbir Cloud Function veya
       client-side handler yazılmadı.
-- [ ] **Geohash bazlı konum sorgusu** — `getNearbyShops()` şu an tüm
-      koleksiyonu çekiyor; dükkan sayısı büyüdükçe maliyetli. GeoFirestore
-      veya benzeri bir çözüme geçilmeli.
+- [ ] **Geohash bazlı konum sorgusu** — `getNearbyShops()` henüz yazılmadı
+      (TODO); mevcut `getShops()` tüm `shops` koleksiyonunu çekiyor, dükkan
+      sayısı büyüdükçe maliyetli. GeoFirestore veya benzeri bir çözüme
+      geçilmeli.
 
 ## Orta öncelik
 
@@ -56,8 +82,9 @@ Görev durumları: `[ ]` yapılmadı · `[~]` kısmen yapıldı · `[x]` tamamla
 
 - [ ] Unit test kapsamı — repository ve viewmodel katmanları için hiç
       test yazılmadı.
-- [ ] `BookingScreen`'de sadece "bugün" için slot gösteriliyor —
-      tarih seçici eklenip ileri günler de gösterilmeli.
+- [ ] `BookingScreen` henüz yazılmadı; `BookingViewModel.load()` tarih
+      parametresi alıyor. Ekran yazılırken tarih seçici eklenip ileri
+      günler de gösterilmeli.
 - [ ] Çoklu şube desteği (Türkiye pazarındaki rakiplerin öne çıkan
       özelliği) — veri modelinde `Shop` tekil, zincir/şube ilişkisi yok.
 

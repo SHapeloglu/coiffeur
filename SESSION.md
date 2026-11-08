@@ -67,3 +67,37 @@ Login/OTP ekranı yazılmadı — `MainActivity` sabit `demo-user-uid` ve sabit
 **Sıradaki adım:** Kod dosyalarının da (önceki oturumlarda oluşturulan
 `KuaforApp/` klasörü) bu repoya taşınması gerekiyor — şu an ayrı bir
 zip olarak duruyor.
+
+---
+
+## Oturum 4 — 2026-11-08 — Çalışma dosyalarının kodla senkronlanması
+
+**Yapılanlar:**
+- Proje iskeleti (Gradle, manifest, `KuaforRepository`, `bookAppointment`
+  transaction'ı, `firestore.rules`, Hilt, placeholder `NavGraph`, tema,
+  `BookingViewModel`) kod okunarak incelendi.
+- `TASK.md`: gerçek kod durumuna göre güncellendi; "kod yazıldı, derlenmedi"
+  bölümü eklendi. Eski kayıtlarda geçen ama kodda bulunmayan öğeler
+  düzeltildi (aşağıya bakın).
+- `BACKLOG.md`: kodda eksik TODO'lar (login, geohash, yorum, iptal, Cloud
+  Function, fiyat doğrulaması) listelendi.
+
+**Doğrulanan bulgular (eski kayıtlarla çelişenler):**
+- `google-services.json` `app/` altında yok.
+- `MainActivity` artık `demo-user-uid` veya sabit İzmir koordinatı
+  kullanmıyor; oturum kontrolü yok (TODO).
+- Oturum 1'de adı geçen `NearbyShopsViewModel`, `MyAppointmentsViewModel`,
+  `BarberDashboardViewModel` ile `NearbyShopsScreen`, `BookingScreen`,
+  `MyAppointmentsScreen`, `BarberDashboardScreen` ve `User` modeli repoda
+  yok. Ekranlar `NavGraph`'ta placeholder olarak duruyor.
+- Oturum 2'de adı geçen `gradle/wrapper/gradle-wrapper.properties` ve
+  `values/themes.xml` repoda yok.
+- `getNearbyShops()` ve `addReview()` henüz yazılmadı (yalnızca TODO).
+
+**Derleme:** Yapılmadı. Gradle sürümleri (`libs.versions.toml`) doğrulanmadı.
+
+**Commit:** Yapılmadı. `app/`, `firestore.rules` ve Gradle dosyaları git'te
+hâlâ untracked.
+
+**Sıradaki adım:** `TASK.md` Kritik bölümü. Önce `google-services.json`
+eklenip Gradle wrapper oluşturulmalı, ardından derleme denenmeli.

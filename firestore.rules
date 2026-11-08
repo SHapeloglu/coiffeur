@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // users/{uid}: yalnızca kendi profili
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /shops/{shopId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /services/{serviceId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn()
+          && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+      }
+
+      match /barbers/{barberId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn()
+          && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+
+        match /slots/{slotId} {
+          allow read: if isSignedIn();
+
+          // Slot oluşturma/silme yalnızca dükkan sahibi
+          allow create, delete: if isSignedIn()
+            && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+
+          // ÇAKIŞMASIZ RANDEVU: müşteri yalnızca boş slotu (isBooked false -> true)
+          // alabilir; başka hiçbir alan değiştirilemez.
+          allow update: if isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBooked'])
+            && resource.data.isBooked == false
+            && request.resource.data.isBooked == true;
+        }
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if isSignedIn();
+        // Puanlar averageRating için Cloud Function ile işlenir; client yalnızca yorum oluşturur.
+        allow create: if isSignedIn()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5;
+        allow update, delete: if false;
+      }
+    }
+
+    // Randevular: yalnızca kendi randevusunu oluşturup okuyabilir
+    match /appointments/{appointmentId} {
+      allow read: if isSignedIn() && resource.data.customerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.status == 'BOOKED';
+      // TODO: İptal akışı eklenince (slot'u da serbest bırakarak) güncellenecek.
+      allow update, delete: if false;
+    }
+
+    // Diğer tüm yollar varsayılan olarak reddedilir.
+  }
+}
