@@ -1,0 +1,16 @@
+{
+  "name": "coiffeur-functions",
+  "private": true,
+  "description": "coiffeur sunucu tarafı doğrulama: randevu fiyat/slot kontrolü ve dükkan ortalama puanı",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-admin": "^12",
+    "firebase-functions": "^6"
+  }
+}

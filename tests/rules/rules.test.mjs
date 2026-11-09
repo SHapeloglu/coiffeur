@@ -1,6 +1,6 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import { readFileSync } from "node:fs";
-import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
 const env = await initializeTestEnvironment({
   projectId: "demo-kuafor-rules",
@@ -72,6 +72,29 @@ await check("review puanı string ise reddedilir", false,
   () => setDoc(doc(customer, "shops/s1/reviews/r4"), { authorUid: "cust1", rating: "5" }));
 await check("başkasının randevusunu okuyamaz", false,
   () => getDoc(doc(env.authenticatedContext("other").firestore(), "appointments/a1")));
+
+// Alan düzeyi sınırlar (firestore.rules keys().hasOnly ve tip kontrolleri)
+const fullAppointment = { customerUid: "cust1", shopId: "s1", barberId: "b1", serviceId: "sv1", slotId: "slot4", serviceName: "Saç Kesimi", date: "2026-12-01", startTime: "13:00", durationMinutes: 30, totalPriceTL: 250, status: "BOOKED" };
+await check("tüm alanlarıyla geçerli randevu izinli", true,
+  () => setDoc(doc(customer, "appointments/v1"), { ...fullAppointment }));
+await check("randevuda fazla alan (isPaid) reddedilir", false,
+  () => setDoc(doc(customer, "appointments/v2"), { ...fullAppointment, isPaid: true }));
+await check("totalPriceTL string ise randevu reddedilir", false,
+  () => setDoc(doc(customer, "appointments/v3"), { ...fullAppointment, totalPriceTL: "250" }));
+await check("durationMinutes 0 reddedilir", false,
+  () => setDoc(doc(customer, "appointments/v4"), { ...fullAppointment, durationMinutes: 0 }));
+await check("durationMinutes 601 reddedilir", false,
+  () => setDoc(doc(customer, "appointments/v5"), { ...fullAppointment, durationMinutes: 601 }));
+await check("totalPriceTL negatif reddedilir", false,
+  () => setDoc(doc(customer, "appointments/v6"), { ...fullAppointment, totalPriceTL: -1 }));
+await check("review fazla alan (helpful) reddedilir", false,
+  () => setDoc(doc(customer, "shops/s1/reviews/v7"), { authorUid: "cust1", rating: 4, helpful: 99 }));
+await check("review 1001 karakter yorum reddedilir", false,
+  () => setDoc(doc(customer, "shops/s1/reviews/v8"), { authorUid: "cust1", rating: 4, comment: "a".repeat(1001) }));
+await check("review 1000 karakter yorum izinli (sınır)", true,
+  () => setDoc(doc(customer, "shops/s1/reviews/v9"), { authorUid: "cust1", rating: 4, comment: "a".repeat(1000) }));
+await check("review tam alanlarla izinli", true,
+  () => setDoc(doc(customer, "shops/s1/reviews/v10"), { shopId: "s1", barberId: "b1", authorUid: "cust1", authorName: "Ayşe", rating: 5, comment: "Harika", createdAt: serverTimestamp() }));
 
 await env.cleanup();
 let fail = 0;
