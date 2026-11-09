@@ -101,3 +101,57 @@ hâlâ untracked.
 
 **Sıradaki adım:** `TASK.md` Kritik bölümü. Önce `google-services.json`
 eklenip Gradle wrapper oluşturulmalı, ardından derleme denenmeli.
+
+---
+
+## Oturum 5 — 2026-11-09 — Login/OTP, Cloud Function, kural sıkılaştırma
+
+**Yapılanlar:**
+- Login / Phone OTP (SMS) akışı yazıldı: `data/repository/AuthRepository.kt`
+  (`FirebaseAuth` erişiminin tek geçtiği yer), `ui/viewmodel/AuthViewModel.kt`,
+  `ui/screens/LoginScreen.kt`. `NavGraph`'taki Splash oturum kontrolü ile
+  oturum yoksa Login, varsa Home'a yönlendirme eklendi.
+- Cloud Functions (`functions/`): `onAppointmentCreated` (slot, hizmet ve
+  fiyat doğrulaması; geçersizse `REJECTED` + `rejectReason`, uygun durumda
+  slot kilidini açar) ve `onReviewCreated` (dükkanın `averageRating` ve
+  `reviewCount` alanlarını transaction ile hesaplar). Fiyat hesabı
+  `functions/lib/pricing.js` içinde saf fonksiyon olarak ayrıldı.
+- `firestore.rules` sıkılaştırıldı: `appointments` ve `reviews` create
+  kurallarında `keys().hasOnly(...)`, alan tipi ve aralık kontrolleri.
+- `tests/rules`: 27 senaryo (24 normal, 3 `[AÇIK]`) yazıldı.
+- Gizlilik politikası taslağı: `docs/gizlilik-politikasi-taslak.md`
+  (yayınlanmadı; hukuki inceleme gerekli).
+- `TASK.md`, `BACKLOG.md`, `ARCHITECTURE.md` ve `README.md` bu duruma göre
+  güncellendi.
+
+**Derleme ve test sonuçları:**
+- Kotlin derlemesi geçici bir kopyada başarılı oldu (sahte
+  `google-services.json` ile). Gerçek proje dosyası ile derleme ve cihazda
+  çalıştırma yapılmadı.
+- `functions`: `npm test` ile saf fonksiyon testleri 16/16 geçti.
+- `tests/rules`: 27 senaryo çalıştırıldı; sonuçlar beklenen durumda
+  (3 `[AÇIK]` senaryo, bilinen boşlukların hâlâ açık olduğunu gösterir).
+
+**Yarıda kalan ajanlar:** Sunucu yeniden başlatıldığı için bu oturumda
+yarıda kalan ajan işleri yeniden yapıldı. Doğrulama için ilgili dosyalar
+baştan okunup kontrol edildi.
+
+**Açık kalanlar / doğrulanmalı:**
+- Cihazda Login/OTP akışı test edilmedi.
+- Firebase Console: Phone Auth sağlayıcısının etkin olup olmadığı
+  doğrulanmalı; uygulamanın debug/release SHA-256 değerleri eklenmeli.
+- `google-services.json` henüz `app/` altında yok.
+- Cloud Functions ve `firestore.rules` deploy edilmedi; proje bağlantısı
+  dosyalarının (`firebase.json`, `.firebaserc`) repoda olup olmadığı
+  doğrulanmalı.
+- Cloud Function'lar emülatörde çalıştırılmadı.
+- `MainActivity` içindeki eski login TODO yorumu ve "Kodu tekrar gönder"
+  için `ForceResendingToken` saklanması açık.
+- Randevusuz slot kilidi için zamanlanmış temizlik işi yazılmadı.
+- Gizlilik politikası yayınlanmadı.
+
+**Commit:** Yapılmadı.
+
+**Sıradaki adım:** Önce Firebase Console ayarları (Phone Auth, SHA-256,
+`google-services.json`) yapılıp Login akışı gerçek cihazda denenmeli. Ardından
+Cloud Functions ve kurallar emülatörde çalıştırılıp deploy edilmeli.

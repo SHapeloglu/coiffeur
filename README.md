@@ -66,6 +66,13 @@ app/src/main/java/com/kuafor/app/
 Detaylı adım adım rehber ve olası hatalar için proje geçmişini
 `SESSION.md` dosyasında bulabilirsin.
 
+## Testler
+
+- Firestore kuralları (Java 17+ ve Node.js 18+ gerekli): `cd tests/rules && npm install && npm test`
+- Cloud Function saf fonksiyonları (Node.js 20): `cd functions && npm test`
+
+Ayrıntılar için `tests/rules/README.md` dosyasına bak.
+
 ## Dokümantasyon
 
 Bu repo, bir AI kod asistanıyla (Claude Code vb.) sürdürülebilir şekilde
@@ -84,8 +91,10 @@ dosyayı okumalı.
 ## Bilinen eksikler
 
 Uygulama şu an derlenebilir durumda ama production için henüz hazır
-değil. Kritik eksikler: gerçek Firebase bağlantısı, login/OTP ekranı,
-işletme onboarding akışı, ödeme entegrasyonu. Tam liste için `TASK.md`.
+değil. Login/OTP ekranı yazıldı ancak cihazda test edilmedi. Kritik
+eksikler: gerçek Firebase bağlantısı ve Console ayarları, Cloud Function
+ve kuralların deploy'u, işletme onboarding akışı, ödeme entegrasyonu.
+Tam liste için `TASK.md`.
 
 ## Lisans
 

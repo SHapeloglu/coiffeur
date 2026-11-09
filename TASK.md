@@ -26,13 +26,21 @@ Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase 
 - [~] **Firebase projesi bağlama** — Firebase Console'da proje oluşturuldu
       mu belirsiz; `google-services.json` henüz `app/` klasörüne
       eklenmedi (doğrulandı: dosya repoda yok). Bu olmadan Auth/Firestore
-      hiç çalışmaz.
-- [ ] **Login / Phone OTP ekranı** — `MainActivity` içinde oturum kontrolü
-      yok (TODO). `NavGraph`'taki Splash de `FirebaseAuth` kontrolü yapmıyor.
-      Gerçek `FirebaseAuth` Phone OTP akışı (kaynak: zeryab-tahir/Barber-App)
-      yazılmalı, giriş yapmamış kullanıcı `NavGraph`'a girmeden login
-      ekranına yönlendirilmeli. (`bookAppointment` oturum yoksa
-      `NotSignedInException` fırlatıyor.)
+      hiç çalışmaz. Login kodu sahte bir `google-services.json` ile geçici
+      kopyada derlendi; gerçek dosya ile derleme ve çalıştırma yapılmadı.
+- [~] **Login / Phone OTP ekranı** — Kod yazıldı, derlendi (geçici kopyada,
+      sahte `google-services.json` ile), cihazda test edilmedi. Kapsam:
+      `AuthRepository`, `AuthViewModel`, `LoginScreen`, `NavGraph` Splash
+      oturum kontrolü (oturum yoksa Login'e, varsa Home'a yönlendirme).
+      Açık kalanlar: "Kodu tekrar gönder" yok (`ForceResendingToken`
+      saklanmıyor); `MainActivity` içindeki eski TODO yorumu kaldırılmalı.
+      (`bookAppointment` oturum yoksa `NotSignedInException` fırlatıyor.)
+- [ ] **Firebase Console: Phone Auth** — Authentication içinde Phone
+      sağlayıcısı etkinleştirilmeli. Durum doğrulanmalı (konsolda kontrol
+      edilmedi).
+- [ ] **Firebase Console: SHA-256 parmak izi** — Uygulamanın debug ve release
+      SHA-256 değerleri Firebase'e eklenmeli; Phone Auth için gerekli.
+      Doğrulanmalı.
 - [ ] **Firestore'a başlangıç verisi** — En az 1 `shop`, birkaç
       `service`, `barber` ve `slot` dokümanı elle veya bir seed script
       ile eklenmeli, aksi halde tüm ekranlar boş görünür. (Repoda seed
@@ -48,14 +56,36 @@ Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase 
       `shop`, `service`, `barber` ve `slot` dokümanlarını uygulama
       içinden oluşturabilmesi gerekiyor; şu an bunlar sadece Firestore
       Console'dan elle eklenebiliyor.
-- [ ] **`averageRating` güncelleme Cloud Function'ı** — `addReview()`
-      çağrıldığında dükkanın ortalama puanını client değil, bir Cloud
-      Function güncellemeli (race condition riski, bkz.
-      `ARCHITECTURE.md`). (`addReview` ve `getReviews` henüz yazılmadı;
-      `reviews` için yalnızca create kuralı var.)
-- [ ] **Push bildirim / randevu hatırlatma** — Firebase Cloud
-      Messaging bağımlılığı eklendi ama hiçbir Cloud Function veya
-      client-side handler yazılmadı.
+- [~] **`averageRating` güncelleme Cloud Function'ı** — `onReviewCreated`
+      (`functions/index.js`) yazıldı: yorum oluşunca dükkanın
+      `averageRating` ve `reviewCount` alanlarını transaction ile yeniden
+      hesaplar. `functions` içindeki testler 16/16 geçti. Deploy edilmedi,
+      emülatörde çalıştırılmadı. `addReview` ve `getReviews` henüz
+      yazılmadı; `reviews` için yalnızca create kuralı var.
+- [~] **Randevu doğrulama Cloud Function'ı** — `onAppointmentCreated`
+      (`functions/index.js`) yeni randevuda slot (`isBooked`), hizmet ve
+      fiyat (`totalPriceTL`) kontrolü yapar; geçersizse randevuyu
+      `REJECTED` + `rejectReason` ile işaretler ve slot bu randevuya
+      aitse kilidi (`isBooked = false`) açar. Trigger istemcinin yazmasından
+      sonra çalışır (kuralla tam çözüm değil, bkz. `BACKLOG.md`). Deploy
+      edilmedi, emülatörde çalıştırılmadı.
+- [~] **Firestore kuralları sıkılaştırma** — `appointments` ve `reviews`
+      create kurallarında `keys().hasOnly(...)` ve alan tipi/aralık
+      kontrolleri eklendi. `tests/rules`: 27 senaryo (24 normal, 3
+      `[AÇIK]`) geçiyor. Deploy edilmedi.
+- [ ] **Cloud Functions ve kuralların deploy'u** — `functions/` ve
+      `firestore.rules` gerçek Firebase projesine yüklenmeli. Proje
+      bağlantısı için `firebase.json` / `.firebaserc` gibi dosyaların repoda
+      olup olmadığı doğrulanmalı (bilinmiyor).
+- [ ] **Randevusuz slot kilidi temizliği** — Müşteri slotu `isBooked = true`
+      yapıp randevu yazmadan kalırsa slot kalıcı olarak dolu görünür.
+      Mevcut Function yalnızca reddedilen randevunun slotunu serbest bırakır;
+      zamanlanmış temizlik işi (ör. Cloud Scheduler) yazılmadı.
+- [ ] **Gizlilik politikası** — `docs/gizlilik-politikasi-taslak.md` taslak
+      olarak hazır; yayınlanmadı. Hukuki inceleme gerekli.
+- [ ] **Push bildirim / randevu hatırlatma** — Firebase Cloud Messaging
+      bağımlılığı eklendi ama `FirebaseMessagingService` veya bildirim
+      gönderen bir Cloud Function yazılmadı.
 - [ ] **Geohash bazlı konum sorgusu** — `getNearbyShops()` henüz yazılmadı
       (TODO); mevcut `getShops()` tüm `shops` koleksiyonunu çekiyor, dükkan
       sayısı büyüdükçe maliyetli. GeoFirestore veya benzeri bir çözüme
@@ -81,7 +111,10 @@ Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase 
 ## Düşük öncelik / iyileştirme
 
 - [ ] Unit test kapsamı — repository ve viewmodel katmanları için hiç
-      test yazılmadı.
+      test yazılmadı. (Firestore kuralları için `tests/rules` ve Cloud
+      Function saf fonksiyonları için `functions/test` mevcut.)
+- [ ] `MainActivity` içindeki eski login TODO yorumu kaldırılmalı
+      (oturum yönlendirmesi artık `NavGraph` Splash'ında).
 - [ ] `BookingScreen` henüz yazılmadı; `BookingViewModel.load()` tarih
       parametresi alıyor. Ekran yazılırken tarih seçici eklenip ileri
       günler de gösterilmeli.

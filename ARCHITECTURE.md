@@ -27,10 +27,11 @@ Veri akışı tek yönlüdür: `Repository → ViewModel (StateFlow) → Compose
 
 | Servis | Kapsam | Durum |
 |---|---|---|
-| Auth | Phone OTP ile giriş | Henüz yazılmadı; oturum kontrolü yok, `bookAppointment` oturum yoksa `NotSignedInException` fırlatır |
-| Firestore | Tüm veri erişimi `KuaforRepository` üzerinden; slot transaction'ı; `firestore.rules` | Kod yazıldı, derlenmedi; gerçek Firebase projesine bağlı değil |
+| Auth | Phone OTP ile giriş | Kod yazıldı (`AuthRepository`, `LoginScreen`), derlendi, cihazda test edilmedi; Phone Auth ve SHA-256 Firebase Console'da doğrulanmalı. `bookAppointment` oturum yoksa `NotSignedInException` fırlatır |
+| Firestore | Tüm veri erişimi `KuaforRepository` üzerinden; slot transaction'ı; `firestore.rules` | Kod yazıldı; kurallar `tests/rules` ile test ediliyor (27 senaryo, 3'ü `[AÇIK]`); deploy edilmedi; gerçek Firebase projesine bağlı değil |
+| Cloud Functions | `functions/`: randevu doğrulama (`onAppointmentCreated`), dükkan puanı (`onReviewCreated`) | Kod yazıldı, saf fonksiyon testleri geçti (16/16); deploy edilmedi, emülatörde çalıştırılmadı |
 | Storage | `FirebaseModule` içinde sağlayıcı olarak tanımlı | Hiçbir yerde kullanılmıyor |
-| Cloud Messaging | Push bildirim / randevu hatırlatma | Bağımlılık eklendi; `FirebaseMessagingService` veya Cloud Function yok |
+| Cloud Messaging | Push bildirim / randevu hatırlatma | Bağımlılık eklendi; `FirebaseMessagingService` veya bildirim gönderen Function yok |
 
 `google-services.json` henüz `app/` klasörüne eklenmedi (`TASK.md`'de
 `[~]`). Auth ve Firestore bu dosya olmadan çalışmaz; kurulum adımları için
@@ -89,10 +90,16 @@ sunucu tarafında da bypass edilememesini garanti eder. Randevu
 dokümanları sadece kendi `customerUid`'i ile eşleşen kullanıcı
 tarafından okunabilir/yazılabilir.
 
+Kural, aynı transaction içindeki slot yazımını göremediği için randevu–slot
+bağını ve fiyatı tek başına doğrulayamaz. Bu kontroller
+`onAppointmentCreated` Cloud Function'ı (`functions/index.js`) tarafından
+istemci yazdıktan sonra yapılır; geçersiz randevu `REJECTED` olarak işaretlenir.
+Bu katman henüz deploy edilmedi.
+
 ## Bilinen ölçeklenme sınırları
 
 - `getNearbyShops()` şu an tüm `shops` koleksiyonunu çekip client'ta
   mesafe hesabı yapıyor. Dükkan sayısı arttıkça bu maliyetli hale gelir;
   geohash tabanlı sorguya (ör. GeoFirestore) geçilmeli.
 - `averageRating` client'tan güncellenmiyor (race condition riski);
-  bir Cloud Function ile hesaplanmalı.
+  `onReviewCreated` Cloud Function'ı ile hesaplanıyor (deploy edilmedi).
