@@ -59,7 +59,11 @@ exports.onAppointmentCreated = onDocumentCreated(
       const sameSlotSnap = await tx.get(sameSlotQuery);
 
       // --- 2) KARAR ---
-      const reason = findRejectReason(ap, slotSnap, serviceSnap);
+      // Aynı slota daha önce oluşturulmuş geçerli bir randevu varsa bu randevu çakışmadır.
+      // Sıralama createdAt ile, eşitlikte doküman kimliğiyle yapılır (deterministik).
+      const reason =
+        findRejectReason(ap, slotSnap, serviceSnap) ||
+        (hasEarlierBooking(sameSlotSnap.docs, apRef.id, apSnap) ? "SLOT_ALREADY_TAKEN" : null);
       if (!reason) return;
 
       // --- 3) YAZMALAR ---
@@ -87,6 +91,20 @@ function findRejectReason(ap, slotSnap, serviceSnap) {
     return "PRICE_MISMATCH";
   }
   return null;
+}
+
+function millisOf(ts) {
+  return ts && typeof ts.toMillis === "function" ? ts.toMillis() : Number.MAX_SAFE_INTEGER;
+}
+
+function hasEarlierBooking(docs, selfId, selfSnap) {
+  const selfMs = millisOf(selfSnap.get("createdAt"));
+  return docs.some((d) => {
+    if (d.id === selfId) return false;
+    const otherMs = millisOf(d.get("createdAt"));
+    if (otherMs !== selfMs) return otherMs < selfMs;
+    return d.id < selfId;
+  });
 }
 
 function rejectFields(reason) {

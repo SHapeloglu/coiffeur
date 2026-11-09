@@ -70,6 +70,7 @@ Detaylı adım adım rehber ve olası hatalar için proje geçmişini
 
 - Firestore kuralları (Java 17+ ve Node.js 18+ gerekli): `cd tests/rules && npm install && npm test`
 - Cloud Function saf fonksiyonları (Node.js 20): `cd functions && npm test`
+- Cloud Function trigger'ları (emülatör; önce `cd functions && npm install`): `firebase emulators:exec --only firestore,functions --config firebase.json "node functions/emulator/triggers.emulator.mjs"` (firebase CLI için `tests/rules` içinde `npm install` ile gelen binary kullanılabilir)
 
 Ayrıntılar için `tests/rules/README.md` dosyasına bak.
 
