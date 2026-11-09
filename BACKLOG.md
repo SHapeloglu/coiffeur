@@ -2,7 +2,7 @@
 
 Önceliklendirilmiş işler `TASK.md`'de (kritik → yüksek → orta → düşük). Bu dosya henüz sıraya girmemiş fikirler içindir; bir fikir somutlaşınca `TASK.md`'ye taşınır.
 
-> Not: Kotlin kaynak kodu yerelde mevcut (`app/`, `firestore.rules`, `functions/`, Gradle dosyaları) ancak henüz commit edilmedi. Login/OTP kodu geçici kopyada derlendi (cihazda test edilmedi); diğer kodların çoğu derlenmedi. Cloud Function ve kural testleri yalnızca saf fonksiyon ve `tests/rules` düzeyinde çalıştırıldı, deploy edilmedi. Aşağıdaki "Kodda eksik kalan TODO'lar" bölümü, kaynak koddaki gerçek TODO'lardan derlenmiştir.
+> Not: Kotlin kaynak kodu, `firestore.rules`, `functions/` ve Gradle dosyaları `feat/android-iskelet` dalında (PR #1) ve geçici kopyada `assembleDebug` ile derlendi (sahte `google-services.json`); cihazda veya gerçek Firebase projesinde çalıştırılmadı. Kural (28 senaryo) ve Cloud Function (16 birim + 7 emülatör) testleri geçiyor, deploy edilmedi. Aşağıdaki "Kodda eksik kalan TODO'lar" bölümü, kaynak koddaki gerçek TODO'lardan derlenmiştir.
 
 ## Kodda eksik kalan TODO'lar
 
@@ -34,7 +34,7 @@ Kod tabanında hiç karşılığı olmayan veya yalnızca yorum olarak duran ö�
 ## Teknik
 
 - `getNearbyShops()` için geohash sorgusu (TASK'ta yüksek öncelik) sonrası: bölge bazlı önbellek ve sayfalama.
-- Firestore güvenlik kurallarının emülatörle otomatik testi — `tests/rules` ile yapıldı (27 senaryo, 3'ü `[AÇIK]`); CI'a bağlanması açık.
+- Firestore güvenlik kurallarının emülatörle otomatik testi — `tests/rules` ile yapıldı (28 senaryo, 3'ü `[AÇIK]`); CI'a bağlanması açık.
 - Çakışmasız slot transaction'ı için yük testi (aynı slota eşzamanlı istek).
 - Çevrimdışı mod: son görüntülenen dükkanlar ve kullanıcının randevuları önbellekte.
 

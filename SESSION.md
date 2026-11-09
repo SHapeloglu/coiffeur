@@ -155,3 +155,24 @@ baştan okunup kontrol edildi.
 **Sıradaki adım:** Önce Firebase Console ayarları (Phone Auth, SHA-256,
 `google-services.json`) yapılıp Login akışı gerçek cihazda denenmeli. Ardından
 Cloud Functions ve kurallar emülatörde çalıştırılıp deploy edilmeli.
+
+---
+
+## Oturum 5 (devam) — 2026-11-09 — Ayrıntılı yeniden kontrol
+
+**Doğrulananlar (yeniden çalıştırıldı):** `functions` birim testleri 16/16;
+`tests/rules` kural testleri; emülatör trigger testleri 7/7; `assembleDebug`
+geçici kopyada başarılı. Depoda izlenen gizli dosya yok; PR #1 açık ve
+birleştirilebilir durumda, `main` değişmedi.
+
+**Bulunan ve düzeltilenler:**
+- Çift rezervasyon: aynı slota ikinci geçerli randevu `BOOKED` kalıyordu;
+  `onAppointmentCreated` artık `SLOT_ALREADY_TAKEN` ile reddediyor (emülatör testiyle bulundu).
+- Kural testlerine gerçek istemci biçimi eklendi (12 alan, `createdAt = serverTimestamp()`):
+  kural testi 28 senaryo oldu (25 normal, 3 `[AÇIK]`).
+- `TASK.md`, `BACKLOG.md`, `ARCHITECTURE.md`: "derlenmedi", "wrapper yok", "emülatörde
+  çalıştırılmadı" gibi bayat ifadeler düzeltildi.
+
+**Hâlâ doğrulanmadı:** gerçek `google-services.json` ile derleme, cihazda Login/OTP,
+Firebase Console ayarları, deploy, `bookAppointment`'ın gerçek istemciyle eşzamanlı testi.
+

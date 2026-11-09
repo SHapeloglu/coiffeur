@@ -18,7 +18,7 @@ Test dosyası iki tür sonuç içerir:
 - `[AÇIK]` ile işaretli senaryolar: bilinen güvenlik boşlukları. Bu testler şu an *izin veriliyor* sonucunu bekler; boşluk kapatıldığında bu beklenti değiştirilmeli.
 
 ## Senaryo sayısı
-Toplam **27** senaryo (24 normal, 3 `[AÇIK]`). Beklenen sonuç: `27/27 beklenen sonuç`.
+Toplam **28** senaryo (25 normal, 3 `[AÇIK]`). Beklenen sonuç: `28/28 beklenen sonuç`.
 
 Alan düzeyi kurallar (`appointments` ve `reviews` create):
 - `keys().hasOnly(...)` ile yalnızca tanımlı alanlara izin verilir; fazla alan reddedilir.

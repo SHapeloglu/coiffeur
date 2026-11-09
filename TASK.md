@@ -2,24 +2,27 @@
 
 Görev durumları: `[ ]` yapılmadı · `[~]` kısmen yapıldı · `[x]` tamamlandı
 
-## Mevcut kod durumu — kod yazıldı, derlenmedi
+## Mevcut kod durumu — kod yazıldı, geçici kopyada derlendi, çalıştırılmadı
 
-Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase projesine karşı test edilmedi.
+Aşağıdaki parçalar kodda mevcut ve `assembleDebug` ile (sahte `google-services.json` kullanan geçici kopyada) derlendi; hiçbiri gerçek bir Firebase projesine karşı veya cihazda çalıştırılmadı.
 
 - [~] **Veri katmanı (okuma)** — `KuaforRepository`: `getShops`, `getShop`,
       `getBarbers`, `getServices`, `getAvailableSlots`, `getMyAppointments`.
-      Kod yazıldı, derlenmedi; bunları çağıran ekran henüz yok.
+      Kod yazıldı, derlendi; bunları çağıran ekran henüz yok.
 - [~] **Çakışmasız randevu** — `KuaforRepository.bookAppointment()` transaction'ı
       ve `firestore.rules` içindeki slot/appointment kuralları. Kod yazıldı,
-      derlenmedi; eşzamanlı rezervasyon testi yapılmadı.
-- [~] **BookingViewModel** — `load()` ve `bookSlot()`. Kod yazıldı, derlenmedi;
+      derlendi. Kurallar `tests/rules` ile, çift rezervasyon engeli
+      `functions/emulator` testiyle emülatörde doğrulandı; gerçek istemciyle
+      eşzamanlı rezervasyon testi yapılmadı.
+- [~] **BookingViewModel** — `load()` ve `bookSlot()`. Kod yazıldı, derlendi;
       bağlı `BookingScreen` henüz yok.
 - [~] **Veri modelleri** — `Shop`, `Barber`, `Service`, `TimeSlot`,
-      `Appointment`, `Review`. Kod yazıldı, derlenmedi. (`User` modeli yok.)
-- [~] **Proje iskeleti** — Gradle (`build.gradle.kts`, `gradle/libs.versions.toml`),
-      `AndroidManifest.xml`, `MainActivity`, `KuaforApplication`, `FirebaseModule`,
-      tema dosyaları, `Screen` ve placeholder'lı `NavGraph`. Kod yazıldı,
-      derlenmedi; `gradle/wrapper/` ve `values/themes.xml` repoda yok.
+      `Appointment`, `Review`. Kod yazıldı, derlendi. (`User` modeli yok.)
+- [~] **Proje iskeleti** — Gradle (`build.gradle.kts`, `gradle/libs.versions.toml`,
+      Gradle wrapper 8.10.2), `AndroidManifest.xml`, `MainActivity`,
+      `KuaforApplication`, `FirebaseModule`, tema dosyaları, `Screen` ve
+      placeholder'lı `NavGraph`. Kod yazıldı, derlendi; `values/themes.xml` ve
+      launcher ikonu repoda yok.
 
 ## Kritik — uygulama çalışmadan önce şart
 
@@ -32,8 +35,7 @@ Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase 
       sahte `google-services.json` ile), cihazda test edilmedi. Kapsam:
       `AuthRepository`, `AuthViewModel`, `LoginScreen`, `NavGraph` Splash
       oturum kontrolü (oturum yoksa Login'e, varsa Home'a yönlendirme).
-      Açık kalanlar: "Kodu tekrar gönder" yok (`ForceResendingToken`
-      saklanmıyor); `MainActivity` içindeki eski TODO yorumu kaldırılmalı.
+      Açık kalan: "Kodu tekrar gönder" yok (`ForceResendingToken` saklanmıyor).
       (`bookAppointment` oturum yoksa `NotSignedInException` fırlatıyor.)
 - [ ] **Firebase Console: Phone Auth** — Authentication içinde Phone
       sağlayıcısı etkinleştirilmeli. Durum doğrulanmalı (konsolda kontrol
@@ -59,24 +61,19 @@ Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase 
 - [~] **`averageRating` güncelleme Cloud Function'ı** — `onReviewCreated`
       (`functions/index.js`) yazıldı: yorum oluşunca dükkanın
       `averageRating` ve `reviewCount` alanlarını transaction ile yeniden
-      hesaplar. `functions` içindeki testler 16/16 geçti. Deploy edilmedi,
-      emülatörde çalıştırılmadı. `addReview` ve `getReviews` henüz
+      hesaplar. `functions` içindeki testler 16/16 geçti; emülatörde (`functions/emulator`) yorum sonrası ortalama doğrulandı. Deploy edilmedi. `addReview` ve `getReviews` henüz
       yazılmadı; `reviews` için yalnızca create kuralı var.
 - [~] **Randevu doğrulama Cloud Function'ı** — `onAppointmentCreated`
       (`functions/index.js`) yeni randevuda slot (`isBooked`), hizmet ve
       fiyat (`totalPriceTL`) kontrolü yapar; geçersizse randevuyu
       `REJECTED` + `rejectReason` ile işaretler ve slot bu randevuya
       aitse kilidi (`isBooked = false`) açar. Trigger istemcinin yazmasından
-      sonra çalışır (kuralla tam çözüm değil, bkz. `BACKLOG.md`). Deploy
-      edilmedi, emülatörde çalıştırılmadı.
+      sonra çalışır (kuralla tam çözüm değil, bkz. `BACKLOG.md`). Aynı slota daha önce oluşturulmuş geçerli bir randevu varsa yenisini `SLOT_ALREADY_TAKEN` ile reddeder (çift rezervasyon). Emülatörde 7/7 doğrulandı. Deploy edilmedi.
 - [~] **Firestore kuralları sıkılaştırma** — `appointments` ve `reviews`
       create kurallarında `keys().hasOnly(...)` ve alan tipi/aralık
-      kontrolleri eklendi. `tests/rules`: 27 senaryo (24 normal, 3
-      `[AÇIK]`) geçiyor. Deploy edilmedi.
+      kontrolleri eklendi. `tests/rules`: 28 senaryo (25 normal, 3 `[AÇIK]`) geçiyor. Deploy edilmedi.
 - [ ] **Cloud Functions ve kuralların deploy'u** — `functions/` ve
-      `firestore.rules` gerçek Firebase projesine yüklenmeli. Proje
-      bağlantısı için `firebase.json` / `.firebaserc` gibi dosyaların repoda
-      olup olmadığı doğrulanmalı (bilinmiyor).
+      `firestore.rules` gerçek Firebase projesine yüklenmeli. Kökte `firebase.json` (kurallar ve emülatör ayarları) var; proje bağlantısı için `.firebaserc` yok, `firebase use` ile oluşturulmalı.
 - [ ] **Randevusuz slot kilidi temizliği** — Müşteri slotu `isBooked = true`
       yapıp randevu yazmadan kalırsa slot kalıcı olarak dolu görünür.
       Mevcut Function yalnızca reddedilen randevunun slotunu serbest bırakır;
@@ -113,8 +110,8 @@ Aşağıdaki parçalar kodda mevcut ama hiçbiri derlenmedi ve gerçek Firebase 
 - [ ] Unit test kapsamı — repository ve viewmodel katmanları için hiç
       test yazılmadı. (Firestore kuralları için `tests/rules` ve Cloud
       Function saf fonksiyonları için `functions/test` mevcut.)
-- [ ] `MainActivity` içindeki eski login TODO yorumu kaldırılmalı
-      (oturum yönlendirmesi artık `NavGraph` Splash'ında).
+- [x] `MainActivity` içindeki eski login TODO yorumu kaldırıldı
+      (oturum yönlendirmesi `NavGraph` Splash'ında).
 - [ ] `BookingScreen` henüz yazılmadı; `BookingViewModel.load()` tarih
       parametresi alıyor. Ekran yazılırken tarih seçici eklenip ileri
       günler de gösterilmeli.

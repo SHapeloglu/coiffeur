@@ -77,6 +77,8 @@ await check("başkasının randevusunu okuyamaz", false,
 const fullAppointment = { customerUid: "cust1", shopId: "s1", barberId: "b1", serviceId: "sv1", slotId: "slot4", serviceName: "Saç Kesimi", date: "2026-12-01", startTime: "13:00", durationMinutes: 30, totalPriceTL: 250, status: "BOOKED" };
 await check("tüm alanlarıyla geçerli randevu izinli", true,
   () => setDoc(doc(customer, "appointments/v1"), { ...fullAppointment }));
+await check("istemcinin gerçek alan kümesi (12 alan, createdAt=serverTimestamp) izinli", true,
+  () => setDoc(doc(customer, "appointments/v1b"), { ...fullAppointment, totalPriceTL: 225.5, createdAt: serverTimestamp() }));
 await check("randevuda fazla alan (isPaid) reddedilir", false,
   () => setDoc(doc(customer, "appointments/v2"), { ...fullAppointment, isPaid: true }));
 await check("totalPriceTL string ise randevu reddedilir", false,
