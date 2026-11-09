@@ -48,3 +48,6 @@ app/google-services.json
 # İmzalama ve API anahtarları
 keystore.properties
 secrets.properties
+
+# Kural testleri bağımlılıkları
+tests/rules/node_modules/
