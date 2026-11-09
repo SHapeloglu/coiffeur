@@ -12,35 +12,57 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.kuafor.app.ui.screens.LoginScreen
+import com.kuafor.app.ui.viewmodel.AuthViewModel
 
 /**
- * Uygulama NavHost'u. Ekranlar henüz yazılmadığı için her route bir
- * placeholder Composable'a bağlı; gerçek ekranlar geldikçe bu bloklar değişir.
+ * Uygulama NavHost'u. Açılışta oturum durumuna göre Login veya Home'a gidilir.
+ * Ekranların çoğu henüz yazılmadığı için kalan route'lar placeholder Composable'a bağlı.
  */
 @Composable
 fun KuaforNavGraph(
     navController: NavHostController = rememberNavController(),
     modifier: Modifier = Modifier
 ) {
+    // Oturum durumu AuthRepository.currentUid'den türetilir (AuthViewModel üzerinden).
+    val authViewModel: AuthViewModel = hiltViewModel()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
         modifier = modifier
     ) {
         composable(Screen.Splash.route) {
-            // TODO: Gerçek splash / oturum kontrolü (FirebaseAuth) eklenecek.
+            // Oturum bilgisi senkron okunabilir (FirebaseAuth.currentUser), bu yüzden
+            // Splash yalnızca tek seferlik yönlendirme yapar.
             LaunchedEffect(Unit) {
-                navController.navigate(Screen.Home.route) {
+                val target = if (authViewModel.uiState.value.loggedIn) {
+                    Screen.Home.route
+                } else {
+                    Screen.Login.route
+                }
+                navController.navigate(target) {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             }
             PlaceholderScreen(title = "Açılış")
+        }
+
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onLoggedIn = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Screen.Home.route) {

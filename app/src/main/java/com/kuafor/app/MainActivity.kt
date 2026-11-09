@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // TODO: Login/OTP ekranı yazılınca oturum yoksa giriş ekranına yönlendirme eklenecek (bkz. TASK.md).
+                    // Oturum kontrolü ve giriş yönlendirmesi NavGraph'taki Splash ekranında yapılır.
                     KuaforNavGraph()
                 }
             }
