@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Opsiyonel alan tip kontrolleri: alan yoksa geçer, varsa tipi/aralığı doğrulanır.
+    function optString(data, key) {
+      return !(key in data) || data[key] is string;
+    }
+    function optInt(data, key, lo, hi) {
+      return !(key in data) || (data[key] is int && data[key] >= lo && data[key] <= hi);
+    }
+    function optNumber(data, key, lo) {
+      return !(key in data) || (data[key] is number && data[key] >= lo);
+    }
+    function optTimestamp(data, key) {
+      return !(key in data) || data[key] is timestamp;
+    }
+    // Firestore yol segmenti id'si: '/' içeremez (aksi halde Cloud Function yolu çözemez; V8).
+    function optId(data, key) {
+      return !(key in data) || (data[key] is string && !data[key].matches('.*/.*'));
+    }
+
+    // users/{uid}: yalnızca kendi profili
+    match /users/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /shops/{shopId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      match /services/{serviceId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn()
+          && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+      }
+
+      match /barbers/{barberId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn()
+          && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+
+        match /slots/{slotId} {
+          allow read: if isSignedIn();
+
+          // Slot oluşturma/silme yalnızca dükkan sahibi
+          allow create, delete: if isSignedIn()
+            && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+
+          // ÇAKIŞMASIZ RANDEVU: müşteri yalnızca boş slotu (isBooked false -> true)
+          // alabilir; başka hiçbir alan değiştirilemez.
+          allow update: if isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBooked'])
+            && resource.data.isBooked == false
+            && request.resource.data.isBooked == true;
+        }
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if isSignedIn();
+        // Puanlar averageRating için Cloud Function ile işlenir; client yalnızca yorum oluşturur.
+        allow create: if isSignedIn()
+          && request.resource.data.keys().hasOnly(['shopId', 'barberId', 'authorUid', 'authorName', 'rating', 'comment', 'createdAt'])
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && optString(request.resource.data, 'shopId')
+          && optString(request.resource.data, 'barberId')
+          && optString(request.resource.data, 'authorName')
+          && optString(request.resource.data, 'comment')
+          && (!('comment' in request.resource.data) || request.resource.data.comment.size() <= 1000)
+          && optTimestamp(request.resource.data, 'createdAt');
+        allow update, delete: if false;
+      }
+    }
+
+    // Randevular: yalnızca kendi randevusunu oluşturup okuyabilir
+    match /appointments/{appointmentId} {
+      allow read: if isSignedIn() && resource.data.customerUid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['customerUid', 'shopId', 'barberId', 'serviceId', 'slotId', 'serviceName', 'date', 'startTime', 'durationMinutes', 'totalPriceTL', 'status', 'createdAt'])
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.status == 'BOOKED'
+        && optId(request.resource.data, 'shopId')
+        && optId(request.resource.data, 'barberId')
+        && optId(request.resource.data, 'serviceId')
+        && optId(request.resource.data, 'slotId')
+        && optString(request.resource.data, 'serviceName')
+        && optString(request.resource.data, 'date')
+        && optString(request.resource.data, 'startTime')
+        && optInt(request.resource.data, 'durationMinutes', 1, 600)
+        && optNumber(request.resource.data, 'totalPriceTL', 0)
+        && optTimestamp(request.resource.data, 'createdAt');
+      // TODO: İptal akışı eklenince (slot'u da serbest bırakarak) güncellenecek.
+      allow update, delete: if false;
+    }
+
+    // Diğer tüm yollar varsayılan olarak reddedilir.
+  }
+}

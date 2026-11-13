@@ -67,3 +67,112 @@ Login/OTP ekranı yazılmadı — `MainActivity` sabit `demo-user-uid` ve sabit
 **Sıradaki adım:** Kod dosyalarının da (önceki oturumlarda oluşturulan
 `KuaforApp/` klasörü) bu repoya taşınması gerekiyor — şu an ayrı bir
 zip olarak duruyor.
+
+---
+
+## Oturum 4 — 2026-11-08 — Çalışma dosyalarının kodla senkronlanması
+
+**Yapılanlar:**
+- Proje iskeleti (Gradle, manifest, `KuaforRepository`, `bookAppointment`
+  transaction'ı, `firestore.rules`, Hilt, placeholder `NavGraph`, tema,
+  `BookingViewModel`) kod okunarak incelendi.
+- `TASK.md`: gerçek kod durumuna göre güncellendi; "kod yazıldı, derlenmedi"
+  bölümü eklendi. Eski kayıtlarda geçen ama kodda bulunmayan öğeler
+  düzeltildi (aşağıya bakın).
+- `BACKLOG.md`: kodda eksik TODO'lar (login, geohash, yorum, iptal, Cloud
+  Function, fiyat doğrulaması) listelendi.
+
+**Doğrulanan bulgular (eski kayıtlarla çelişenler):**
+- `google-services.json` `app/` altında yok.
+- `MainActivity` artık `demo-user-uid` veya sabit İzmir koordinatı
+  kullanmıyor; oturum kontrolü yok (TODO).
+- Oturum 1'de adı geçen `NearbyShopsViewModel`, `MyAppointmentsViewModel`,
+  `BarberDashboardViewModel` ile `NearbyShopsScreen`, `BookingScreen`,
+  `MyAppointmentsScreen`, `BarberDashboardScreen` ve `User` modeli repoda
+  yok. Ekranlar `NavGraph`'ta placeholder olarak duruyor.
+- Oturum 2'de adı geçen `gradle/wrapper/gradle-wrapper.properties` ve
+  `values/themes.xml` repoda yok.
+- `getNearbyShops()` ve `addReview()` henüz yazılmadı (yalnızca TODO).
+
+**Derleme:** Yapılmadı. Gradle sürümleri (`libs.versions.toml`) doğrulanmadı.
+
+**Commit:** Yapılmadı. `app/`, `firestore.rules` ve Gradle dosyaları git'te
+hâlâ untracked.
+
+**Sıradaki adım:** `TASK.md` Kritik bölümü. Önce `google-services.json`
+eklenip Gradle wrapper oluşturulmalı, ardından derleme denenmeli.
+
+---
+
+## Oturum 5 — 2026-11-09 — Login/OTP, Cloud Function, kural sıkılaştırma
+
+**Yapılanlar:**
+- Login / Phone OTP (SMS) akışı yazıldı: `data/repository/AuthRepository.kt`
+  (`FirebaseAuth` erişiminin tek geçtiği yer), `ui/viewmodel/AuthViewModel.kt`,
+  `ui/screens/LoginScreen.kt`. `NavGraph`'taki Splash oturum kontrolü ile
+  oturum yoksa Login, varsa Home'a yönlendirme eklendi.
+- Cloud Functions (`functions/`): `onAppointmentCreated` (slot, hizmet ve
+  fiyat doğrulaması; geçersizse `REJECTED` + `rejectReason`, uygun durumda
+  slot kilidini açar) ve `onReviewCreated` (dükkanın `averageRating` ve
+  `reviewCount` alanlarını transaction ile hesaplar). Fiyat hesabı
+  `functions/lib/pricing.js` içinde saf fonksiyon olarak ayrıldı.
+- `firestore.rules` sıkılaştırıldı: `appointments` ve `reviews` create
+  kurallarında `keys().hasOnly(...)`, alan tipi ve aralık kontrolleri.
+- `tests/rules`: 27 senaryo (24 normal, 3 `[AÇIK]`) yazıldı.
+- Gizlilik politikası taslağı: `docs/gizlilik-politikasi-taslak.md`
+  (yayınlanmadı; hukuki inceleme gerekli).
+- `TASK.md`, `BACKLOG.md`, `ARCHITECTURE.md` ve `README.md` bu duruma göre
+  güncellendi.
+
+**Derleme ve test sonuçları:**
+- Kotlin derlemesi geçici bir kopyada başarılı oldu (sahte
+  `google-services.json` ile). Gerçek proje dosyası ile derleme ve cihazda
+  çalıştırma yapılmadı.
+- `functions`: `npm test` ile saf fonksiyon testleri 16/16 geçti.
+- `tests/rules`: 27 senaryo çalıştırıldı; sonuçlar beklenen durumda
+  (3 `[AÇIK]` senaryo, bilinen boşlukların hâlâ açık olduğunu gösterir).
+
+**Yarıda kalan ajanlar:** Sunucu yeniden başlatıldığı için bu oturumda
+yarıda kalan ajan işleri yeniden yapıldı. Doğrulama için ilgili dosyalar
+baştan okunup kontrol edildi.
+
+**Açık kalanlar / doğrulanmalı:**
+- Cihazda Login/OTP akışı test edilmedi.
+- Firebase Console: Phone Auth sağlayıcısının etkin olup olmadığı
+  doğrulanmalı; uygulamanın debug/release SHA-256 değerleri eklenmeli.
+- `google-services.json` henüz `app/` altında yok.
+- Cloud Functions ve `firestore.rules` deploy edilmedi; proje bağlantısı
+  dosyalarının (`firebase.json`, `.firebaserc`) repoda olup olmadığı
+  doğrulanmalı.
+- Cloud Function'lar emülatörde çalıştırılmadı.
+- `MainActivity` içindeki eski login TODO yorumu ve "Kodu tekrar gönder"
+  için `ForceResendingToken` saklanması açık.
+- Randevusuz slot kilidi için zamanlanmış temizlik işi yazılmadı.
+- Gizlilik politikası yayınlanmadı.
+
+**Commit:** Yapılmadı.
+
+**Sıradaki adım:** Önce Firebase Console ayarları (Phone Auth, SHA-256,
+`google-services.json`) yapılıp Login akışı gerçek cihazda denenmeli. Ardından
+Cloud Functions ve kurallar emülatörde çalıştırılıp deploy edilmeli.
+
+---
+
+## Oturum 5 (devam) — 2026-11-09 — Ayrıntılı yeniden kontrol
+
+**Doğrulananlar (yeniden çalıştırıldı):** `functions` birim testleri 16/16;
+`tests/rules` kural testleri; emülatör trigger testleri 7/7; `assembleDebug`
+geçici kopyada başarılı. Depoda izlenen gizli dosya yok; PR #1 açık ve
+birleştirilebilir durumda, `main` değişmedi.
+
+**Bulunan ve düzeltilenler:**
+- Çift rezervasyon: aynı slota ikinci geçerli randevu `BOOKED` kalıyordu;
+  `onAppointmentCreated` artık `SLOT_ALREADY_TAKEN` ile reddediyor (emülatör testiyle bulundu).
+- Kural testlerine gerçek istemci biçimi eklendi (12 alan, `createdAt = serverTimestamp()`):
+  kural testi 28 senaryo oldu (25 normal, 3 `[AÇIK]`).
+- `TASK.md`, `BACKLOG.md`, `ARCHITECTURE.md`: "derlenmedi", "wrapper yok", "emülatörde
+  çalıştırılmadı" gibi bayat ifadeler düzeltildi.
+
+**Hâlâ doğrulanmadı:** gerçek `google-services.json` ile derleme, cihazda Login/OTP,
+Firebase Console ayarları, deploy, `bookAppointment`'ın gerçek istemciyle eşzamanlı testi.
+

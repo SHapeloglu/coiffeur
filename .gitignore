@@ -1,0 +1,53 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle
+.gradle/
+build/
+.cxx/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.DS_Store
+
+# Keystores ve imzalama anahtarları
+*.jks
+*.keystore
+
+# Firebase yapılandırması (proje sahibinden alınır, repoya girmez)
+app/google-services.json
+
+# Logs
+*.log
+
+# Kotlin Gradle plugin geçici dosyaları
+.kotlin/
+
+# İmzalama ve API anahtarları
+keystore.properties
+secrets.properties
+
+# Kural testleri bağımlılıkları
+tests/rules/node_modules/
