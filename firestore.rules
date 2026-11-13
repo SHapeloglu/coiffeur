@@ -20,6 +20,10 @@ service cloud.firestore {
     function optTimestamp(data, key) {
       return !(key in data) || data[key] is timestamp;
     }
+    // Firestore yol segmenti id'si: '/' içeremez (aksi halde Cloud Function yolu çözemez; V8).
+    function optId(data, key) {
+      return !(key in data) || (data[key] is string && !data[key].matches('.*/.*'));
+    }
 
     // users/{uid}: yalnızca kendi profili
     match /users/{uid} {
@@ -84,10 +88,10 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['customerUid', 'shopId', 'barberId', 'serviceId', 'slotId', 'serviceName', 'date', 'startTime', 'durationMinutes', 'totalPriceTL', 'status', 'createdAt'])
         && request.resource.data.customerUid == request.auth.uid
         && request.resource.data.status == 'BOOKED'
-        && optString(request.resource.data, 'shopId')
-        && optString(request.resource.data, 'barberId')
-        && optString(request.resource.data, 'serviceId')
-        && optString(request.resource.data, 'slotId')
+        && optId(request.resource.data, 'shopId')
+        && optId(request.resource.data, 'barberId')
+        && optId(request.resource.data, 'serviceId')
+        && optId(request.resource.data, 'slotId')
         && optString(request.resource.data, 'serviceName')
         && optString(request.resource.data, 'date')
         && optString(request.resource.data, 'startTime')

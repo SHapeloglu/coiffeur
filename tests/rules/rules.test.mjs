@@ -89,6 +89,10 @@ await check("durationMinutes 601 reddedilir", false,
   () => setDoc(doc(customer, "appointments/v5"), { ...fullAppointment, durationMinutes: 601 }));
 await check("totalPriceTL negatif reddedilir", false,
   () => setDoc(doc(customer, "appointments/v6"), { ...fullAppointment, totalPriceTL: -1 }));
+await check("slotId '/' içeren randevu reddedilir (V8)", false,
+  () => setDoc(doc(customer, "appointments/v6b"), { ...fullAppointment, slotId: "x/y" }));
+await check("shopId '/' içeren randevu reddedilir (V8)", false,
+  () => setDoc(doc(customer, "appointments/v6c"), { ...fullAppointment, shopId: "s1/barbers" }));
 await check("review fazla alan (helpful) reddedilir", false,
   () => setDoc(doc(customer, "shops/s1/reviews/v7"), { authorUid: "cust1", rating: 4, helpful: 99 }));
 await check("review 1001 karakter yorum reddedilir", false,

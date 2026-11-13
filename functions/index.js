@@ -5,11 +5,10 @@ const { getFirestore } = require("firebase-admin/firestore");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const { isPriceValid, averageRating } = require("./lib/pricing");
+const { isSafeId, slotStartMs, isPastSlot } = require("./lib/validation");
 
 initializeApp();
 const db = getFirestore();
-
-const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
 
 /**
  * appointments/{appointmentId} oluşturulunca çalışır.
@@ -21,6 +20,8 @@ const isNonEmptyString = (v) => typeof v === "string" && v.length > 0;
  * Kontroller (hepsi tek transaction içinde; önce okumalar, sonra yazmalar):
  *  - slot shops/{shopId}/barbers/{barberId}/slots/{slotId} var ve isBooked === true
  *  - hizmet shops/{shopId}/services/{serviceId} var ve totalPriceTL beklenen fiyatla eşleşiyor
+ *  - shopId/barberId/slotId/serviceId '/' içermiyor (aksi halde yol hatası; V8)
+ *  - slot tarihi okunabiliyor ve başlangıcı henüz gelmemiş (V9: PAST_SLOT)
  *
  * Geçersizse: randevu status = REJECTED + rejectReason yazılır. Slot, bu randevuya
  * ait kilit ise (aynı slota bağlı başka geçerli BOOKED randevu yoksa) isBooked = false yapılır.
@@ -39,7 +40,8 @@ exports.onAppointmentCreated = onDocumentCreated(
       const ap = apSnap.data();
       const { shopId, barberId, slotId, serviceId } = ap;
 
-      if (![shopId, barberId, slotId, serviceId].every(isNonEmptyString)) {
+      // '/' içeren id, db.doc() yol hatasına ve trigger'ın çökmesine yol açar (V8); reddedilir.
+      if (![shopId, barberId, slotId, serviceId].every(isSafeId)) {
         tx.update(apRef, rejectFields("INVALID_FIELDS"));
         return;
       }
@@ -62,7 +64,7 @@ exports.onAppointmentCreated = onDocumentCreated(
       // Aynı slota daha önce oluşturulmuş geçerli bir randevu varsa bu randevu çakışmadır.
       // Sıralama createdAt ile, eşitlikte doküman kimliğiyle yapılır (deterministik).
       const reason =
-        findRejectReason(ap, slotSnap, serviceSnap) ||
+        findRejectReason(ap, slotSnap, serviceSnap, Date.now()) ||
         (hasEarlierBooking(sameSlotSnap.docs, apRef.id, apSnap) ? "SLOT_ALREADY_TAKEN" : null);
       if (!reason) return;
 
@@ -81,9 +83,16 @@ exports.onAppointmentCreated = onDocumentCreated(
   }
 );
 
-function findRejectReason(ap, slotSnap, serviceSnap) {
+function findRejectReason(ap, slotSnap, serviceSnap, nowMs) {
   if (!slotSnap.exists) return "SLOT_NOT_FOUND";
   if (slotSnap.get("isBooked") !== true) return "SLOT_NOT_BOOKED";
+
+  // Geçmiş tarihli slot rezervasyonu (V9). Saat sunucu tarafında okunur; istemci saatine güvenilmez.
+  const date = slotSnap.get("date");
+  const startTime = slotSnap.get("startTime");
+  if (Number.isNaN(slotStartMs(date, startTime))) return "INVALID_SLOT_TIME";
+  if (isPastSlot(date, startTime, nowMs)) return "PAST_SLOT";
+
   if (!serviceSnap.exists) return "SERVICE_NOT_FOUND";
 
   const service = serviceSnap.data();
