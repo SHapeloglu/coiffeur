@@ -2,13 +2,19 @@ package com.kuafor.app.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.kuafor.app.data.model.Appointment
 import com.kuafor.app.data.model.Barber
 import com.kuafor.app.data.model.Service
 import com.kuafor.app.data.model.Shop
 import com.kuafor.app.data.model.TimeSlot
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
+import java.text.ParseException
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -78,6 +84,7 @@ class KuaforRepository @Inject constructor(
             .get()
             .await()
             .toObjects(TimeSlot::class.java)
+            .filter { isUpcoming(it.date, it.startTime) }
             .sortedBy { it.startTime }
 
     /** Giriş yapmış müşterinin randevuları (en yakın tarih önce). */
@@ -161,10 +168,54 @@ class KuaforRepository @Inject constructor(
             Unit
         }.await()
 
+        awaitServerVerdict(appointmentRef)
         return appointmentRef.id
     }
 
+    /**
+     * Sunucu trigger'ı (onAppointmentCreated) randevuyu sonradan reddedebilir (V8/V9).
+     * Kısa süre randevu durumunu izler; REJECTED ise kullanıcıya hata verilir. Süre dolunca
+     * hâlâ BOOKED ise başarılı kabul edilir (trigger henüz çalışmamış olabilir).
+     */
+    private suspend fun awaitServerVerdict(appointmentRef: DocumentReference) {
+        repeat(VERDICT_POLL_ATTEMPTS) {
+            val snapshot = appointmentRef.get().await()
+            when (snapshot.getString("status")) {
+                Appointment.STATUS_BOOKED, null -> delay(VERDICT_POLL_DELAY_MS)
+                "REJECTED" -> throw rejectionFor(snapshot.getString("rejectReason"))
+                else -> return
+            }
+        }
+    }
+
+    private fun rejectionFor(reason: String?): KuaforException = when (reason) {
+        "SLOT_ALREADY_TAKEN" -> SlotAlreadyBookedException()
+        "PAST_SLOT" -> SlotInPastException()
+        "SLOT_NOT_FOUND" -> SlotNotFoundException()
+        "SERVICE_NOT_FOUND" -> ServiceNotFoundException()
+        else -> AppointmentRejectedException()
+    }
+
     private companion object {
+        const val VERDICT_POLL_ATTEMPTS = 6
+        const val VERDICT_POLL_DELAY_MS = 500L
+
+        /** Slot saatleri Türkiye saatiyle (UTC+3) yorumlanır; istemci saat dilimine güvenilmez. */
+        val SLOT_TIME_ZONE: TimeZone = TimeZone.getTimeZone("Europe/Istanbul")
+
+        /** Slot başlangıcı şu andan sonra mı? Okunamayan tarih/saat listeye alınmaz. */
+        fun isUpcoming(date: String, startTime: String): Boolean {
+            val startMs = try {
+                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).apply {
+                    isLenient = false
+                    timeZone = SLOT_TIME_ZONE
+                }.parse("$date $startTime")?.time
+            } catch (e: ParseException) {
+                null
+            } ?: return false
+            return startMs > System.currentTimeMillis()
+        }
+
         const val COLLECTION_SHOPS = "shops"
         const val COLLECTION_APPOINTMENTS = "appointments"
         const val SUBCOLLECTION_SERVICES = "services"
