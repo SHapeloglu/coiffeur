@@ -3,6 +3,7 @@ package com.kuafor.app.data.repository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.kuafor.app.data.model.Appointment
 import com.kuafor.app.data.model.Barber
@@ -147,7 +148,8 @@ class KuaforRepository @Inject constructor(
                 ?: throw ServiceNotFoundException()
 
             // --- 2) YAZMALAR (aynı transaction) ---
-            tx.update(slotRef, "isBooked", true)
+            // lockedAt sunucu zamanıdır (kural bunu zorunlu kılar); randevu yoksa zamanlanmış temizlik açar.
+            tx.update(slotRef, mapOf("isBooked" to true, "lockedAt" to FieldValue.serverTimestamp()))
 
             val appointment = Appointment(
                 id = appointmentRef.id,
