@@ -77,6 +77,14 @@ class BookingViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    private fun Exception.toUserMessage(): String =
-        if (this is KuaforException) message ?: DEFAULT_ERROR_MESSAGE else DEFAULT_ERROR_MESSAGE
+    /**
+     * Kullanıcıya gösterilecek mesaj. Firestore transaction'ı kullanıcı istisnasını bir
+     * sarmalayıcıya koyarsa da mesaj kaybolmasın diye neden zinciri taranır.
+     */
+    private fun Exception.toUserMessage(): String {
+        val kuaforError = generateSequence<Throwable>(this) { it.cause }
+            .filterIsInstance<KuaforException>()
+            .firstOrNull()
+        return kuaforError?.message ?: DEFAULT_ERROR_MESSAGE
+    }
 }

@@ -136,8 +136,24 @@ fun LoginScreen(
                     Text("Doğrula")
                 }
                 Spacer(Modifier.height(8.dp))
-                // TODO: "Kodu tekrar gönder" — yeniden gönderme için ForceResendingToken
-                // saklanmalı (AuthRepository.sendOtp şu an token'ı saklamıyor).
+                OutlinedButton(
+                    onClick = {
+                        if (activity != null) viewModel.resendOtp(activity)
+                    },
+                    enabled = !state.isLoading &&
+                        state.resendCooldown == 0 &&
+                        activity != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (state.resendCooldown > 0) {
+                            "Kodu tekrar gönder (${state.resendCooldown} sn)"
+                        } else {
+                            "Kodu tekrar gönder"
+                        }
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {
                         codeInput = ""

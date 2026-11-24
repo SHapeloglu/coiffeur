@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.kuafor.app.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.launch
 
 private const val DEFAULT_ERROR_MESSAGE = "Bir hata oluştu, lütfen tekrar deneyin."
 private const val OTP_LENGTH = 6
+private const val RESEND_COOLDOWN_SECONDS = 30
 
 enum class AuthStep { PHONE, CODE }
 
@@ -24,7 +27,9 @@ data class AuthUiState(
     val verificationId: String? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val loggedIn: Boolean = false
+    val loggedIn: Boolean = false,
+    /** Yeniden gönderme için kalan saniye; 0 ise "Kodu tekrar gönder" aktif. */
+    val resendCooldown: Int = 0
 )
 
 @HiltViewModel
@@ -37,6 +42,8 @@ class AuthViewModel @Inject constructor(
         AuthUiState(loggedIn = authRepository.currentUid.value != null)
     )
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    private var cooldownJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -68,6 +75,7 @@ class AuthViewModel @Inject constructor(
                                 verificationId = verificationId
                             )
                         }
+                        startResendCooldown()
                     }
                 }
                 .onFailure { e ->
@@ -75,6 +83,46 @@ class AuthViewModel @Inject constructor(
                         it.copy(isLoading = false, error = e.message ?: DEFAULT_ERROR_MESSAGE)
                     }
                 }
+        }
+    }
+
+    /**
+     * Kodu son numaraya yeniden gönderir. Yeni doğrulama ID'si CODE adımında kullanılır.
+     * Bekleme süresi dolmadan ya da başka bir işlem sürerken çağrılırsa hiçbir şey yapmaz.
+     */
+    fun resendOtp(activity: Activity) {
+        val current = _uiState.value
+        if (current.isLoading || current.resendCooldown > 0) return
+        _uiState.update { it.copy(isLoading = true, error = null) }
+
+        viewModelScope.launch {
+            authRepository.resendOtp(activity)
+                .onSuccess { verificationId ->
+                    if (verificationId == AuthRepository.AUTO_VERIFIED_ID) {
+                        _uiState.update { it.copy(isLoading = false) }
+                    } else {
+                        _uiState.update {
+                            it.copy(isLoading = false, verificationId = verificationId)
+                        }
+                        startResendCooldown()
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(isLoading = false, error = e.message ?: DEFAULT_ERROR_MESSAGE)
+                    }
+                }
+        }
+    }
+
+    private fun startResendCooldown() {
+        cooldownJob?.cancel()
+        cooldownJob = viewModelScope.launch {
+            for (remaining in RESEND_COOLDOWN_SECONDS downTo 1) {
+                _uiState.update { it.copy(resendCooldown = remaining) }
+                delay(1_000L)
+            }
+            _uiState.update { it.copy(resendCooldown = 0) }
         }
     }
 
@@ -105,7 +153,15 @@ class AuthViewModel @Inject constructor(
 
     /** Kod adımından telefon adımına döner. */
     fun changePhone() {
-        _uiState.update { it.copy(step = AuthStep.PHONE, verificationId = null, error = null) }
+        cooldownJob?.cancel()
+        _uiState.update {
+            it.copy(
+                step = AuthStep.PHONE,
+                verificationId = null,
+                error = null,
+                resendCooldown = 0
+            )
+        }
     }
 
     fun clearError() {
