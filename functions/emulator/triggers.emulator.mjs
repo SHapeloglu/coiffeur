@@ -81,6 +81,24 @@ await db.doc("appointments/a8").set({ ...base, slotId: "bad1", date: "bozuk", st
 const a8 = await waitFor(async () => { const d = (await db.doc("appointments/a8").get()).data(); return d.status !== "BOOKED" ? d : null; });
 check("bozuk slot tarihi REJECTED INVALID_SLOT_TIME", a8 && a8.rejectReason === "INVALID_SLOT_TIME", JSON.stringify(a8));
 
+// 9) Geçerli randevu: kilit zamanı (lockedAt) trigger tarafından temizlenir, slot dolu kalır
+await db.doc("shops/s1/barbers/b1/slots/lk1").set({ isBooked: true, date: "2099-12-01", startTime: "11:30", lockedAt: Timestamp.now() });
+await db.doc("appointments/a9").set({ ...base, slotId: "lk1", startTime: "11:30", totalPriceTL: 90 });
+const lk1 = await waitFor(async () => { const d = (await db.doc("shops/s1/barbers/b1/slots/lk1").get()).data(); return d.lockedAt === undefined ? d : null; });
+const a9 = (await db.doc("appointments/a9").get()).data();
+check("geçerli randevu slot lockedAt'ini temizler, slot dolu kalır", !!lk1 && lk1.isBooked === true && a9.status === "BOOKED", JSON.stringify(lk1));
+
+// 10) Zamanlanmış temizlik: süresi dolmuş randevusuz kilit serbest, taze kilit korunur
+const { releaseExpiredLocks } = (await import("../lib/sweep.js")).default;
+await db.doc("shops/s1/barbers/b1/slots/exp1").set({ isBooked: true, date: "2099-12-01", startTime: "12:00", lockedAt: Timestamp.fromMillis(Date.now() - 30 * 60 * 1000) });
+await db.doc("shops/s1/barbers/b1/slots/fresh1").set({ isBooked: true, date: "2099-12-01", startTime: "12:30", lockedAt: Timestamp.now() });
+const sweep = await releaseExpiredLocks(db);
+const exp1 = (await db.doc("shops/s1/barbers/b1/slots/exp1").get()).data();
+const fresh1 = (await db.doc("shops/s1/barbers/b1/slots/fresh1").get()).data();
+check("süresi dolan randevusuz kilit serbest bırakılır", exp1.isBooked === false && exp1.lockedAt === undefined, JSON.stringify(exp1));
+check("taze kilit (10 dk dolmamış) korunur", fresh1.isBooked === true && fresh1.lockedAt !== undefined, JSON.stringify(fresh1));
+check("temizlik sonucu: 1 kilit serbest bırakıldı", sweep.released === 1, JSON.stringify(sweep));
+
 let fail = 0;
 for (const r of results) {
   if (!r.ok) fail++;

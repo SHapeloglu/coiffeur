@@ -1,6 +1,6 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
 import { readFileSync } from "node:fs";
-import { doc, setDoc, updateDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, getDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 
 const env = await initializeTestEnvironment({
   projectId: "demo-kuafor-rules",
@@ -32,8 +32,12 @@ const anon = env.unauthenticatedContext().firestore();
 const slotPath = (id) => doc(customer, `shops/s1/barbers/b1/slots/${id}`);
 
 // Slot kuralları (bookAppointment transaction'ının dayandığı kural)
-await check("slot false->true (sadece isBooked) izinli", true,
+await check("lockedAt olmadan slot kilitlenemez (randevusuz kilit engeli)", false,
   () => updateDoc(slotPath("slot1"), { isBooked: true }));
+await check("lockedAt istemci saatiyle yazılırsa reddedilir", false,
+  () => updateDoc(slotPath("slot4"), { isBooked: true, lockedAt: Timestamp.fromDate(new Date(0)) }));
+await check("slot false->true + sunucu zamanlı lockedAt izinli", true,
+  () => updateDoc(slotPath("slot1"), { isBooked: true, lockedAt: serverTimestamp() }));
 await check("slot güncellemesi başka alanı da değiştirirse reddedilir", false,
   () => updateDoc(slotPath("slot2"), { isBooked: true, startTime: "00:00" }));
 await check("dolu slot (isBooked=true) tekrar alınamaz", false,
@@ -52,7 +56,7 @@ await check("status BOOKED değilse randevu oluşturulamaz", false,
 // BİLİNEN AÇIKLAR: bu testler mevcut kuralların zafiyetini kanıtlar (true = açık var)
 await check("[AÇIK] slot almadan randevu yazılabiliyor (slot bağı yok)", true,
   () => setDoc(doc(customer, "appointments/a4"), { customerUid: "cust1", status: "BOOKED", slotId: "SAHTE_SLOT", totalPriceTL: 1 }));
-await check("[AÇIK] randevu yazmadan slot kilitlenebiliyor", true,
+await check("randevu yazmadan (lockedAt'siz) slot kilitlenemez", false,
   () => updateDoc(slotPath("slot4"), { isBooked: true }));
 await check("[AÇIK] fiyat doğrulaması yok: totalPriceTL=1 yazılabiliyor", true,
   () => setDoc(doc(customer, "appointments/a5"), { customerUid: "cust1", status: "BOOKED", slotId: "x", totalPriceTL: 1 }));

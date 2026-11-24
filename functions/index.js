@@ -1,11 +1,13 @@
 "use strict";
 
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 const { isPriceValid, averageRating } = require("./lib/pricing");
 const { isSafeId, slotStartMs, isPastSlot } = require("./lib/validation");
+const { releaseExpiredLocks } = require("./lib/sweep");
 
 initializeApp();
 const db = getFirestore();
@@ -66,7 +68,12 @@ exports.onAppointmentCreated = onDocumentCreated(
       const reason =
         findRejectReason(ap, slotSnap, serviceSnap, Date.now()) ||
         (hasEarlierBooking(sameSlotSnap.docs, apRef.id, apSnap) ? "SLOT_ALREADY_TAKEN" : null);
-      if (!reason) return;
+      if (!reason) {
+        // Geçerli randevu: kilit artık bu randevuya bağlı; kilit zamanı temizlenir,
+        // böylece zamanlanmış temizlik bu slotu serbest bırakmaz.
+        if (slotSnap.get("lockedAt")) tx.update(slotRef, { lockedAt: FieldValue.delete() });
+        return;
+      }
 
       // --- 3) YAZMALAR ---
       tx.update(apRef, rejectFields(reason));
@@ -75,7 +82,7 @@ exports.onAppointmentCreated = onDocumentCreated(
       const slotLockIsOurs =
         slotSnap.exists && slotSnap.get("isBooked") === true && !otherValidBookings;
       if (slotLockIsOurs) {
-        tx.update(slotRef, { isBooked: false });
+        tx.update(slotRef, { isBooked: false, lockedAt: FieldValue.delete() });
       }
 
       logger.warn("Randevu reddedildi", { appointmentId: apRef.id, reason });
@@ -151,3 +158,12 @@ exports.onReviewCreated = onDocumentCreated(
     });
   }
 );
+
+/**
+ * Randevusuz kalmış slot kilitlerini (lockedAt süresi dolmuş) her 5 dakikada bir serbest bırakır.
+ * Bkz. lib/sweep.js.
+ */
+exports.releaseExpiredSlotLocks = onSchedule("every 5 minutes", async () => {
+  const result = await releaseExpiredLocks(db);
+  logger.info("Süresi dolan slot kilitleri işlendi", result);
+});

@@ -57,11 +57,13 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
 
           // ÇAKIŞMASIZ RANDEVU: müşteri yalnızca boş slotu (isBooked false -> true)
-          // alabilir; başka hiçbir alan değiştirilemez.
+          // alabilir. Kilit anı (lockedAt) sunucu zamanı olmak zorunda; böylece
+          // zamanlanmış temizlik, randevusuz kalmış kilitleri süresi dolunca açabilir.
           allow update: if isSignedIn()
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBooked'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBooked', 'lockedAt'])
             && resource.data.isBooked == false
-            && request.resource.data.isBooked == true;
+            && request.resource.data.isBooked == true
+            && request.resource.data.lockedAt == request.time;
         }
       }
 
