@@ -43,6 +43,14 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    /** Son başarılı SMS isteğinin numarası; [lastResendToken] ile birlikte yazılır. */
+    @Volatile
+    private var lastPhoneE164: String? = null
+
+    /** Son SMS isteğinin yeniden gönderme token'ı (onCodeSent'te alınır). */
+    @Volatile
+    private var lastResendToken: PhoneAuthProvider.ForceResendingToken? = null
+
     /**
      * Telefona SMS gönderir ve doğrulama ID'sini döndürür.
      *
@@ -61,6 +69,25 @@ class AuthRepository @Inject constructor(
             Result.failure(AuthException(mapSendError(e), e))
         }
 
+    /**
+     * Son [sendOtp] isteğindeki numaraya kodu yeniden gönderir ve yeni doğrulama ID'sini döndürür.
+     * Daha önce başarılı bir gönderim yoksa (token yoksa) Türkçe hatayla başarısız döner.
+     */
+    suspend fun resendOtp(activity: Activity): Result<String> {
+        val phone = lastPhoneE164
+        val token = lastResendToken
+        if (phone == null || token == null) {
+            return Result.failure(AuthException(NO_RESEND_TARGET_ERROR))
+        }
+        return try {
+            Result.success(requestVerification(phone, activity, token))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(AuthException(mapSendError(e), e))
+        }
+    }
+
     /** Kullanıcının SMS'te gördüğü kodla oturum açar. */
     suspend fun verifyOtp(verificationId: String, code: String): Result<Unit> =
         try {
@@ -77,7 +104,11 @@ class AuthRepository @Inject constructor(
         auth.signOut()
     }
 
-    private suspend fun requestVerification(phoneE164: String, activity: Activity): String =
+    private suspend fun requestVerification(
+        phoneE164: String,
+        activity: Activity,
+        forceResendingToken: PhoneAuthProvider.ForceResendingToken? = null
+    ): String =
         suspendCancellableCoroutine { cont ->
             var finished = false
 
@@ -105,7 +136,9 @@ class AuthRepository @Inject constructor(
                     verificationId: String,
                     token: PhoneAuthProvider.ForceResendingToken
                 ) {
-                    // Yeniden gönderme için token burada saklanmıyor (bkz. LoginScreen TODO).
+                    // Yeniden gönderme için numara ve token birlikte saklanır.
+                    lastPhoneE164 = phoneE164
+                    lastResendToken = token
                     finish(verificationId, null)
                 }
             }
@@ -115,6 +148,7 @@ class AuthRepository @Inject constructor(
                 .setTimeout(SMS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .setActivity(activity)
                 .setCallbacks(callbacks)
+                .apply { forceResendingToken?.let { setForceResendingToken(it) } }
                 .build()
 
             PhoneAuthProvider.verifyPhoneNumber(options)
@@ -148,6 +182,8 @@ class AuthRepository @Inject constructor(
 
         private const val SMS_TIMEOUT_SECONDS = 60L
         private const val DEFAULT_ERROR = "Giriş yapılamadı, lütfen tekrar deneyin."
+        private const val NO_RESEND_TARGET_ERROR =
+            "Kod yeniden gönderilemedi. Lütfen telefon numaranızı tekrar girin."
         private const val ERROR_INVALID_PHONE_NUMBER = "ERROR_INVALID_PHONE_NUMBER"
         private const val ERROR_SESSION_EXPIRED = "ERROR_SESSION_EXPIRED"
     }
