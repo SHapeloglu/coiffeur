@@ -33,7 +33,10 @@ service cloud.firestore {
     match /shops/{shopId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      // Puan alanları yalnızca Cloud Function (admin) tarafından yazılır; sahip değiştiremez.
+      allow update: if isSignedIn() && resource.data.ownerUid == request.auth.uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['averageRating', 'reviewCount']);
+      allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
 
       match /services/{serviceId} {
         allow read: if isSignedIn();

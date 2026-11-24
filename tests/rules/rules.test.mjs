@@ -102,6 +102,17 @@ await check("review 1000 karakter yorum izinli (sınır)", true,
 await check("review tam alanlarla izinli", true,
   () => setDoc(doc(customer, "shops/s1/reviews/v10"), { shopId: "s1", barberId: "b1", authorUid: "cust1", authorName: "Ayşe", rating: 5, comment: "Harika", createdAt: serverTimestamp() }));
 
+// Dükkan sahibi puan alanlarını elle değiştiremez (averageRating/reviewCount yalnızca Cloud Function yazar)
+const owner = env.authenticatedContext("owner1").firestore();
+await check("sahip dükkan adını güncelleyebilir", true,
+  () => updateDoc(doc(owner, "shops/s1"), { name: "Yeni Ad" }));
+await check("sahip averageRating'i elle değiştiremez", false,
+  () => updateDoc(doc(owner, "shops/s1"), { averageRating: 5 }));
+await check("sahip reviewCount'u elle değiştiremez", false,
+  () => updateDoc(doc(owner, "shops/s1"), { name: "X", reviewCount: 999 }));
+await check("başkası dükkanı güncelleyemez", false,
+  () => updateDoc(doc(env.authenticatedContext("other").firestore(), "shops/s1"), { name: "Hack" }));
+
 await env.cleanup();
 let fail = 0;
 for (const r of results) {
